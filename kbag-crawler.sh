@@ -21,7 +21,7 @@
 
 #
 # kbag-crawler
-# kbag-crawler.sh v0.1.0
+# kbag-crawler.sh v0.2.0
 #
 
 # Fail-fast
@@ -37,7 +37,7 @@ IPSW=$4
 LINK=$IPSW
 LINKS=$IPSW
 fi
-
+DECRYPTOR=$5
 # Create initial output file
 ./jq -n --arg device "$DEVICE" '{"device": $device}' > $OUTPUT
 
@@ -50,22 +50,32 @@ do
     ./pzb -g 'Firmware/all_flash/iBoot.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
     ./pzb -g 'Firmware/dfu/iBEC.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
     ./pzb -g 'Firmware/dfu/iBSS.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
-    
-    # NR==1 -> Production keybag
-    # NR==2 -> Development keybag
+    if [ "$DECRYPTOR" = 'anya' ]; then
     ILLB_KB=$(./img4 -b -i 'LLB.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
     IBOT_KB=$(./img4 -b -i 'iBoot.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
     IBEC_KB=$(./img4 -b -i 'iBEC.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
     IBSS_KB=$(./img4 -b -i 'iBSS.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
-    
+    else;
+    ILLB_KB=$(./img4 -b -i 'LLB.'$BCFG'.RELEASE.im4p' | awk 'NR==1')
+    IBOT_KB=$(./img4 -b -i 'iBoot.'$BCFG'.RELEASE.im4p' | awk 'NR==1')
+    IBEC_KB=$(./img4 -b -i 'iBEC.'$BCFG'.RELEASE.im4p' | awk 'NR==1')
+    IBSS_KB=$(./img4 -b -i 'iBSS.'$BCFG'.RELEASE.im4p' | awk 'NR==1')
+    fi
     # Decrypt keybags (Anya)
     # Note: Must initialize Anya device before running kbag-crawler
+    if [ "$DECRYPTOR" = 'anya' ]; then
     ANYA="./anyactl"
     ILLB_DKB=$($ANYA -k $ILLB_KB | awk 'NR==2')
     IBOT_DKB=$($ANYA -k $IBOT_KB | awk 'NR==2')
     IBEC_DKB=$($ANYA -k $IBEC_KB | awk 'NR==2')
     IBSS_DKB=$($ANYA -k $IBSS_KB | awk 'NR==2')
-    
+    else;
+    gaster="./gaster"
+    ILLB_DKB=$($gaster -k $ILLB_KB | awk 'NR==2')
+    IBOT_DKB=$($gaster -k $IBOT_KB | awk 'NR==2')
+    IBEC_DKB=$($gaster -k $IBEC_KB | awk 'NR==2')
+    IBSS_DKB=$($gaster -k $IBSS_KB | awk 'NR==2')
+
     # Verify keybags
     ./img4 -k $ILLB_DKB -i 'LLB.'$BCFG'.RELEASE.im4p' -o 'ILLB.dec' > /dev/null
     ./img4 -k $IBOT_DKB -i 'iBoot.'$BCFG'.RELEASE.im4p' -o 'IBOT.dec' > /dev/null
