@@ -9,7 +9,7 @@ requirements:
    
 3. common sense
 
-how to use:
+# how to use:
 
 ./kbag-crawler <device> <boardconfig without AP part (sometimes you have to pzb -l the ipsw to see it tho, as its not awlays that)> <output file> <ipswurl (put "all" in if you want all kbags for that device decrypted)>
 
