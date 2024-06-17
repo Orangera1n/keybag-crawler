@@ -1,6 +1,8 @@
 #!/bin/zsh
 
 # Copyright 2023, Nick Botticelli. <nick.s.botticelli@gmail.com>
+# This fork has been made by Ellie Firebloom (elliefirebloom@gmail.com)
+
 #
 # This file is part of kbag-crawler.
 #
@@ -26,31 +28,35 @@
 #set -e
 
 DEVICE=$1
-OUTPUT=$2
-
-
-
+BCFG=$2
+OUTPUT=$3
+if [ "$4" = 'all' ]; then
 LINKS=$(curl --silent "https://api.ipsw.me/v4/device/${DEVICE}" | jq ".firmwares[] .url" | tr -d '"')
+else;
+IPSW=$4
+LINK=$IPSW
+LINKS=$IPSW
+fi
 
 # Create initial output file
-jq -n --arg device "$DEVICE" '{"device": $device}' > $OUTPUT
+./jq -n --arg device "$DEVICE" '{"device": $device}' > $OUTPUT
 
 #while read link
 while IFS= read -r link
 do
     BUILDNUM=$(echo $link | sed -E 's/.*_([^_]+)_Restore\.ipsw/\1/')
 
-    pzb -g 'Firmware/all_flash/LLB.j420.RELEASE.im4p' "$link" > /dev/null
-    pzb -g 'Firmware/all_flash/iBoot.j420.RELEASE.im4p' "$link" > /dev/null
-    pzb -g 'Firmware/dfu/iBEC.j420.RELEASE.im4p' "$link" > /dev/null
-    pzb -g 'Firmware/dfu/iBSS.j420.RELEASE.im4p' "$link" > /dev/null
+    ./pzb -g 'Firmware/all_flash/LLB.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
+    ./pzb -g 'Firmware/all_flash/iBoot.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
+    ./pzb -g 'Firmware/dfu/iBEC.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
+    ./pzb -g 'Firmware/dfu/iBSS.'$BCFG'.RELEASE.im4p' "$link" > /dev/null
     
     # NR==1 -> Production keybag
     # NR==2 -> Development keybag
-    ILLB_KB=$(img4 -b -i 'LLB.j420.RELEASE.im4p' | awk 'NR==2')
-    IBOT_KB=$(img4 -b -i 'iBoot.j420.RELEASE.im4p' | awk 'NR==2')
-    IBEC_KB=$(img4 -b -i 'iBEC.j420.RELEASE.im4p' | awk 'NR==2')
-    IBSS_KB=$(img4 -b -i 'iBSS.j420.RELEASE.im4p' | awk 'NR==2')
+    ILLB_KB=$(./img4 -b -i 'LLB.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
+    IBOT_KB=$(./img4 -b -i 'iBoot.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
+    IBEC_KB=$(./img4 -b -i 'iBEC.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
+    IBSS_KB=$(./img4 -b -i 'iBSS.'$BCFG'.RELEASE.im4p' | awk 'NR==2')
     
     # Decrypt keybags (Anya)
     # Note: Must initialize Anya device before running kbag-crawler
@@ -61,10 +67,10 @@ do
     IBSS_DKB=$($ANYA -k $IBSS_KB | awk 'NR==2')
     
     # Verify keybags
-    img4 -k $ILLB_DKB -i 'LLB.j420.RELEASE.im4p' -o 'ILLB.dec' > /dev/null
-    img4 -k $IBOT_DKB -i 'iBoot.j420.RELEASE.im4p' -o 'IBOT.dec' > /dev/null
-    img4 -k $IBEC_DKB -i 'iBEC.j420.RELEASE.im4p' -o 'IBEC.dec' > /dev/null
-    img4 -k $IBSS_DKB -i 'iBSS.j420.RELEASE.im4p' -o 'IBSS.dec' > /dev/null
+    ./img4 -k $ILLB_DKB -i 'LLB.'$BCFG'.RELEASE.im4p' -o 'ILLB.dec' > /dev/null
+    ./img4 -k $IBOT_DKB -i 'iBoot.'$BCFG'.RELEASE.im4p' -o 'IBOT.dec' > /dev/null
+    ./img4 -k $IBEC_DKB -i 'iBEC.'$BCFG'.RELEASE.im4p' -o 'IBEC.dec' > /dev/null
+    ./img4 -k $IBSS_DKB -i 'iBSS.'$BCFG'.RELEASE.im4p' -o 'IBSS.dec' > /dev/null
     
     strings 'ILLB.dec' | grep 'Apple Mobile Device' > /dev/null
     ILLB_CHECK=$?
@@ -88,7 +94,7 @@ do
     mv $OUTPUT ${OUTPUT}_tmp
     
     # Output result into JSON file
-    jq \
+    ./jq \
       --arg buildnum $BUILDNUM \
       --arg illb_dkb $ILLB_DKB \
       --arg ibot_dkb $IBOT_DKB \
